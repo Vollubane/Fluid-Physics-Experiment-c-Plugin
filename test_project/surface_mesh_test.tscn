@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3 uid="uid://cglwn8j4s8qno"]
+
+[ext_resource type="Script" uid="uid://bd5ftru7vslpv" path="res://example_surface_mesh.gd" id="1_q3xtv"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wireframe"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.1)
+
+[node name="SurfaceMeshTest" type="Node3D"]
+script = ExtResource("1_q3xtv")
+
+[node name="FluidSimulator" type="FluidSimulator" parent="."]
+max_particles = 2000
+surface_mesh_enabled = true
+surface_grid_resolution = 0.03
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0.8, 0.8, 2.89184)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 2, 0)
+shadow_enabled = true
+
+[node name="ReferenceCube" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
+
+[node name="CSGBox3D" type="CSGBox3D" parent="ReferenceCube"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.447357, 0, -0.492201)
+material = SubResource("StandardMaterial3D_wireframe")
