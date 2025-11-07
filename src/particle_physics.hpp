@@ -3,6 +3,7 @@
 #include <godot_cpp/variant/vector3.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <vector>
 
 using namespace godot;
 
@@ -22,6 +23,11 @@ struct Particle {
     Color color;         // Couleur de la particule (pour colorant/diffusion)
     bool visible;        // Est visible si en surface (pas complètement entourée)
     
+    // Viscosité et optimisation
+    std::vector<size_t> neighbors;  // Indices des voisins du même liquide (pour viscosité)
+    int connection_count;            // Nombre de connexions (mis à jour chaque frame)
+    bool is_interior;                // True si particule au centre (beaucoup de connexions)
+    
     // Constructeur par défaut (eau bleue)
     Particle() 
         : position(Vector3(0, 0, 0)), 
@@ -33,7 +39,9 @@ struct Particle {
           restitution(0.0f),  // Aucun rebond - collision parfaitement inélastique
           liquid_name("eau"),
           color(Color(0.3f, 0.6f, 1.0f, 1.0f)),
-          visible(true) {}
+          visible(true),
+          connection_count(0),
+          is_interior(false) {}
     
     // Constructeur avec paramètres complets
     Particle(Vector3 pos, float m, float r, float dens, float rest, const String &name, const Color &col)
@@ -46,7 +54,9 @@ struct Particle {
           restitution(rest),
           liquid_name(name),
           color(col),
-          visible(true) {}
+          visible(true),
+          connection_count(0),
+          is_interior(false) {}
 };
 
 // Namespace contenant toutes les fonctions de calcul physique
@@ -96,5 +106,33 @@ namespace PhysicsCalculations {
     // Sépare deux particules qui se chevauchent
     // Déplace les particules pour qu'elles se touchent juste sans se chevaucher
     void separate_overlapping_particles(Particle &p1, Particle &p2);
+    
+    // ========== Double Buffering pour collisions parallèles ==========
+    
+    // Calcule la collision entre deux particules et écrit dans les buffers temporaires
+    // Version lock-free: lit position/velocity, écrit temp_position/temp_velocity
+    // Accumule les corrections de vélocité (peut être appelé plusieurs fois)
+    void calculate_collision_to_buffer(const Particle &p1_read, const Particle &p2_read,
+                                       Vector3 &p1_velocity_delta, Vector3 &p2_velocity_delta,
+                                       Vector3 &p1_position_delta, Vector3 &p2_position_delta);
+    
+    // ========== Viscosité et liens entre particules ==========
+    
+    // Applique une force de viscosité basée sur les voisins du même liquide
+    // viscosity: coefficient de viscosité (0 = aucune viscosité, 1 = très visqueux)
+    void apply_viscosity_force(Particle &particle, const std::vector<Particle> &all_particles, float viscosity);
+    
+    // Vérifie si deux particules sont assez proches pour être connectées (viscosité)
+    // connection_radius: rayon de connexion (multiplicateur du rayon des particules)
+    bool check_viscosity_connection(const Particle &p1, const Particle &p2, float connection_radius);
+    
+    // ========== Prédiction d'oscillation ==========
+    
+    // Simule N frames en avance et calcule la somme des déplacements
+    // Retourne la norme de la somme vectorielle des déplacements
+    // Si proche de 0 → oscillation détectée
+    float predict_movement_sum(const Particle &particle, const Vector3 &gravity, 
+                              float delta_time, int lookahead_frames, 
+                              float damping, float box_size);
 }
 
